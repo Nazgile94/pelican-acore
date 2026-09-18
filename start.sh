@@ -81,6 +81,27 @@ is_bool() { [[ "$1" == "0" || "$1" == "1" ]]; }
 is_nonneg_number() { [[ "$1" =~ ^([0-9]+([.][0-9]+)?|[.][0-9]+)$ ]]; }
 sha256_text() { printf '%s' "$1" | sha256sum | awk '{print $1}'; }
 
+
+set_conf_string() {
+    local file="$1"
+    local key="$2"
+    local value="$3"
+    local escaped="$value"
+
+    [[ -f "$file" ]] || die "Konfigurationsdatei fehlt: $file"
+
+    # Escape sed replacement metacharacters. Runtime paths are expected to be
+    # normal absolute Linux paths, but this also keeps '&' and backslashes safe.
+    escaped="${escaped//\\/\\\\}"
+    escaped="${escaped//&/\\&}"
+
+    if grep -Eq "^[[:space:]]*${key}[[:space:]]*=" "$file"; then
+        sed -i -E "s|^[[:space:]]*${key}[[:space:]]*=.*$|${key} = \"${escaped}\"|" "$file"
+    else
+        printf '\n%s = "%s"\n' "$key" "$value" >> "$file"
+    fi
+}
+
 if [[ -z "$WORLD_PORT" || "$WORLD_PORT" == "0" ]]; then
     WORLD_PORT="${SERVER_PORT:-8085}"
 fi
@@ -214,6 +235,26 @@ if [[ "$MODULE_CONFIG_AUTO_COPY" == "1" && -d "$ETC/modules" ]]; then
         fi
     done < <(find "$ETC/modules" -type f -name '*.conf.dist' -print0)
 fi
+
+
+# AzerothCore was compiled by Pelican's installer under /mnt/server, while the
+# same installation is mounted at /home/container during normal runtime.
+# Empty SourceDirectory/MySQLExecutable values would therefore fall back to
+# build-time paths (or an empty path) and can make DBUpdater/dbimport fail.
+# Pin all updater-relevant paths to their real runtime locations.
+[[ -d "$SRC/data/sql" ]] || die "AzerothCore SQL-Quellverzeichnis fehlt: $SRC/data/sql"
+mkdir -p "$SRC/var/build/obj"
+
+for conf in "$ETC/dbimport.conf" "$ETC/authserver.conf" "$ETC/worldserver.conf"; do
+    set_conf_string "$conf" "SourceDirectory" "$SRC"
+    set_conf_string "$conf" "MySQLExecutable" "$MYSQL_BIN"
+done
+
+# SourceDirectory has an unambiguous environment override name and is exported
+# as an additional guard. Environment values take precedence over *.conf.
+export AC_SOURCE_DIRECTORY="$SRC"
+
+say "Runtime-Pfade fuer AzerothCore-Updater gesetzt: SourceDirectory=$SRC, MySQLExecutable=$MYSQL_BIN"
 
 MYSQL_EXTRA=(
     --basedir="$MYSQL_HOME"
