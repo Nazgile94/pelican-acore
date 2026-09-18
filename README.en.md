@@ -209,6 +209,17 @@ This repository is explicitly an **AI-assisted community project**. Large parts 
 
 See [AI-NOTICE.md](AI-NOTICE.md) for the full disclosure.
 
+## Standalone AIO Egg
+
+In addition to the recommended custom Docker Yolk edition, this project also provides a **Standalone AIO Edition**.
+
+This version does **not require your own GitHub repository, Dockerfile or GHCR image**.
+
+The user only needs a single file:
+
+```text
+egg-azerothcore-standalone-aio.json
+
 ## Contributing
 
 Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
