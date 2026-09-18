@@ -81,9 +81,9 @@
     },
     {
       "name": "Worldserver Port Override",
-      "description": "Leer/0 = Primary Allocation (SERVER_PORT). Bei anderem Wert muss der Port als Pelican-Allocation existieren.",
+      "description": "Bei anderem Wert muss der Port als Pelican-Allocation existieren.",
       "env_variable": "WORLD_PORT",
-      "default_value": "",
+      "default_value": "8885",
       "user_viewable": true,
       "user_editable": true,
       "rules": "nullable|integer|between:1,65535",
