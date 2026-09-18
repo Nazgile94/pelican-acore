@@ -5,7 +5,7 @@
     "update_url": null
   },
   "exported_at": "2026-09-18T12:29:01+00:00",
-  "name": "AzerothCore WotLK - All in One v2.1",
+  "name": "AzerothCore WotLK - All in One",
   "author": "Nazgile94",
   "uuid": "b2b1b3e4-f2f7-4b61-a7f4-b122913fbd23",
   "description": "AzerothCore WotLK All-in-One fuer Pelican: MySQL 8.4, dbimport, Authserver, Worldserver, Client-Daten, Module und Build-Automation in einem Server. World-Port kann die Primary Allocation nutzen oder per WORLD_PORT ueberschrieben werden.",
