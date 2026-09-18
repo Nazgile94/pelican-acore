@@ -1,0 +1,19 @@
+services:
+  azerothcore:
+    build: ..
+    container_name: azerothcore-aio-test
+    environment:
+      STARTUP: "bash ./start.sh"
+      SERVER_PORT: "8085"
+      AUTH_PORT: "3724"
+      REALM_ADDRESS: "127.0.0.1"
+      ACORE_DB_PASSWORD: "auto"
+      BUILD_THREADS: "2"
+      AUTO_UPDATE: "0"
+    ports:
+      - "8085:8085/tcp"
+      - "3724:3724/tcp"
+    volumes:
+      - ./data:/home/container
+    stdin_open: true
+    tty: true

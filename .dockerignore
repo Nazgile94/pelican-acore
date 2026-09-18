@@ -1,0 +1,12 @@
+.git
+.github
+*.zip
+dist/
+docs/
+examples/
+scripts/
+README*.md
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
+LICENSE
