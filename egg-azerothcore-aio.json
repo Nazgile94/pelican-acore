@@ -81,9 +81,9 @@
     },
     {
       "name": "Worldserver Port Override",
-      "description": "Leer/0 = Primary Allocation (SERVER_PORT). Bei anderem Wert muss der Port als Pelican-Allocation existieren.",
+      "description": "Primary Allocation (SERVER_PORT). Bei anderem Wert muss der Port als Pelican-Allocation existieren.",
       "env_variable": "WORLD_PORT",
-      "default_value": "",
+      "default_value": "8085",
       "user_viewable": true,
       "user_editable": true,
       "rules": "nullable|integer|between:1,65535",
@@ -334,9 +334,9 @@
     },
     {
       "name": "Map Update Threads",
-      "description": "MapUpdate.Threads. Normal 1; bei PlayerBots werden bei leerem Wert automatisch 4 genutzt.",
+      "description": "MapUpdate.Threads. Normal 1; bei PlayerBots bitte auf 4.",
       "env_variable": "MAP_UPDATE_THREADS",
-      "default_value": "",
+      "default_value": "1",
       "user_viewable": true,
       "user_editable": true,
       "rules": "nullable|integer|between:1,64",
