@@ -1,113 +1,209 @@
-# AzerothCore WotLK – Pelican All-in-One v2
+# AzerothCore WotLK – Pelican All-in-One
 
 [English README](README.en.md)
 
-Eine komplette Repo-Vorlage für einen **AzerothCore WotLK 3.3.5a Privatserver in einem einzigen Pelican-Server**. Das Runtime-Image enthält den Build-Stack und MySQL; der Server verwaltet AzerothCore, Client-Daten, Datenbanken, Authserver und Worldserver persistent unter `/home/container`.
+Ein öffentlich nutzbares **All-in-One-Egg für AzerothCore WotLK 3.3.5a auf Pelican**. Ein einzelner Pelican-Server verwaltet AzerothCore, MySQL 8.4, Datenbankmigrationen, Authserver, Worldserver, Client-Daten und optionale AzerothCore-Module.
 
-> Dieses Repository enthält **nicht** den AzerothCore-Quellcode oder WoW-Clientdateien. AzerothCore wird beim ersten Start aus dem offiziellen Repository geklont; Client-Daten werden über `acore.sh client-data` bezogen.
+**Für normale Nutzer ist kein eigener Docker-Build und kein GitHub-Fork erforderlich.** Das mitgelieferte Egg verwendet das öffentliche Runtime-Image:
 
-## Enthalten
+```text
+ghcr.io/nazgile94/azerothcore-pelican-aio:latest
+```
 
-- `egg-azerothcore-aio.json` – importierbares Pelican `PTDL_v2` Egg
-- `Dockerfile` / `entrypoint.sh` – eigenes Pelican-Yolk
-- `start.sh` – AIO-Orchestrierung
-- automatische MySQL-8.4-Initialisierung
+> Das Repository enthält weder den AzerothCore-Quellcode noch WoW-Clientdateien. AzerothCore wird beim ersten Start aus dem offiziellen Upstream-Repository geklont. Benötigte Server-Client-Daten werden über AzerothCores `acore.sh client-data` bezogen.
+
+## Funktionen
+
+- importierbares Pelican-`PTDL_v2`-Egg
+- MySQL 8.4 direkt im gleichen Pelican-Server
+- automatische Einrichtung von `acore_auth`, `acore_characters` und `acore_world`
 - automatische `dbimport`-Migrationen
-- automatische Client-Daten (`dbc`, `maps`, `vmaps`, `mmaps`)
+- automatische Client-Daten: `dbc`, `maps`, `vmaps`, `mmaps`
+- Authserver + Worldserver gemeinsam verwaltet
+- optionaler Worldserver-Port oder automatisch Pelicans Primary Allocation
+- persistente Daten unter `/home/container`
+- automatisches internes Datenbankpasswort
 - AzerothCore-Module über `ACORE_MODULES`
-- automatische Modul-Konfigurationsdateien aus `*.conf.dist`
-- viele sinnvolle Pelican-Variablen für Realm, Gameplay, Rates, Security und Performance
-- GitHub Actions für Validierung, GHCR-Build und ein fertig generiertes Egg-Artefakt
+- automatische Erstellung von Modul-Configs aus `*.conf.dist`
+- zahlreiche Pelican-Variablen für Realm, Rates, Gameplay, Sicherheit und Performance
+- GitHub Actions für Validierung, Docker/GHCR-Builds und Release-Eggs
+- deutsch- und englischsprachige Dokumentation
 
-## Schnellstart
+## Schnellstart für Server-Admins
 
-1. Dieses Repository in dein GitHub-Konto übernehmen.
-2. Workflow **Build & publish Pelican Yolk** starten oder auf `main` pushen.
-3. Unter **Actions → Build & publish Pelican Yolk → Artifacts** `pelican-azerothcore-aio-egg` herunterladen. Dieses Egg enthält bereits deine korrekte lowercase GHCR-URL.
-4. Egg in Pelican importieren.
-5. Server mit einer Primary TCP Allocation für den Worldserver anlegen; üblich ist `8085`.
-6. Zusätzliche TCP Allocation `3724` für den Authserver anlegen (oder `AUTH_PORT` entsprechend ändern).
-7. `REALM_ADDRESS` auf deine öffentlich erreichbare IP oder Domain setzen.
-8. Starten. Der erste Start kompiliert AzerothCore und dauert deutlich länger als Folgestarts.
+### 1. Egg importieren
 
-## Ports
+Lade `egg-azerothcore-aio.json` aus diesem Repository bzw. einem Release herunter und importiere es in Pelican.
+
+Das Standard-Egg zeigt bereits auf:
+
+```text
+ghcr.io/nazgile94/azerothcore-pelican-aio:latest
+```
+
+Wenn dieses GHCR-Package öffentlich ist, benötigt dein Pelican/Wings-Node **keine GitHub-Zugangsdaten** zum Pull.
+
+### 2. Allocations anlegen
+
+Empfohlen:
 
 | Dienst | Standard | Pelican |
 |---|---:|---|
-| Worldserver | Primary Allocation / `8085` | Primary Allocation; `WORLD_PORT` leer lassen oder als Override setzen |
+| Worldserver | `8085` | Primary TCP Allocation |
 | Authserver | `3724` | zusätzliche TCP Allocation |
-| MySQL | `3306` | standardmäßig nur intern; extern nur mit `MYSQL_REMOTE_ACCESS=1` |
+| MySQL | `3306` | standardmäßig **nicht extern freigeben** |
 
-`WORLD_PORT` ist absichtlich ein **Override**. Leer bzw. `0` bedeutet: Nutze Pelicans `SERVER_PORT` der Primary Allocation. Wenn du `WORLD_PORT` auf einen anderen Wert setzt, muss genau dieser Port ebenfalls als Allocation vorhanden sein.
+`WORLD_PORT` ist optional. Leer oder `0` bedeutet: Nutze automatisch Pelicans `SERVER_PORT` der Primary Allocation. Wenn du einen anderen `WORLD_PORT` setzt, muss dieser Port ebenfalls als Allocation existieren.
 
-## Wichtigste Variablen
+### 3. Wichtige Startup-Werte setzen
 
-Die v2-Version stellt unter anderem direkt im Startup-Tab bereit:
+Für einen normalen öffentlichen oder privaten Realm solltest du mindestens prüfen:
 
-- Realm/Netzwerk: `REALM_NAME`, `REALM_ADDRESS`, `WORLD_PORT`, `AUTH_PORT`, `REALM_TYPE`, `REALM_ZONE`
-- Gameplay: `PLAYER_LIMIT`, `MAX_PLAYER_LEVEL`, `START_PLAYER_LEVEL`, `START_PLAYER_MONEY`, `CHARACTERS_PER_REALM`, `SKIP_CINEMATICS`
-- Rates: `RATE_XP_KILL`, `RATE_XP_QUEST`, `RATE_XP_EXPLORE`, `RATE_DROP_MONEY`, `RATE_REPUTATION_GAIN`, `RATE_HONOR`
-- Performance: `NETWORK_THREADS`, `THREAD_POOL`, `BUILD_THREADS`
-- Auth/Security: `STRICT_VERSION_CHECK`, `WRONG_PASS_MAX_COUNT`, `WRONG_PASS_BAN_TIME`, `ALLOW_IP_LOGGING`
-- Betrieb: `AUTO_UPDATE`, `FORCE_REBUILD`, `ACORE_MODULES`, `FORCE_CLIENT_DATA_REFRESH`
+```text
+REALM_NAME=AzerothCore
+REALM_ADDRESS=deine.domain.tld
+AUTH_PORT=3724
+WORLD_PORT=
+ACORE_DB_PASSWORD=auto
+MYSQL_REMOTE_ACCESS=0
+```
 
-Die vollständige Tabelle mit Erklärungen steht in [docs/CONFIGURATION.de.md](docs/CONFIGURATION.de.md).
+`REALM_ADDRESS=auto` verwendet Pelicans `SERVER_IP`. Bei NAT, Reverse Proxy, externer IP oder DNS ist eine explizite öffentliche IP/Domain meist sinnvoller.
+
+### 4. Server starten
+
+Der erste Start dauert deutlich länger, weil dabei unter anderem:
+
+1. AzerothCore geklont wird,
+2. der Core kompiliert wird,
+3. DBC/Maps/VMaps/MMaps bereitgestellt werden,
+4. MySQL initialisiert wird,
+5. die AzerothCore-Datenbanken importiert bzw. aktualisiert werden,
+6. Authserver und Worldserver gestartet werden.
+
+Folgestarts sind wesentlich schneller.
+
+## Ressourcen
+
+Für den **ersten Build** sind als praxisnaher Ausgangspunkt etwa folgende Ressourcen sinnvoll:
+
+| Ressource | Empfehlung |
+|---|---:|
+| RAM | 4–8 GB |
+| CPU | 2–4 Threads oder mehr |
+| Speicher | 30 GB oder mehr |
+| Architektur | `linux/amd64` |
+
+Der laufende Server kann je nach Spielerzahl, Modulen und Datenbankgröße mit weniger Ressourcen auskommen. Große Module wie PlayerBots können den Bedarf deutlich erhöhen.
+
+## Wichtige Variablen
+
+Das Egg stellt unter anderem bereit:
+
+- **Realm/Netzwerk:** `REALM_NAME`, `REALM_ADDRESS`, `REALM_LOCAL_ADDRESS`, `WORLD_PORT`, `AUTH_PORT`, `REALM_TYPE`, `REALM_ZONE`
+- **Gameplay:** `PLAYER_LIMIT`, `MAX_PLAYER_LEVEL`, `START_PLAYER_LEVEL`, `START_PLAYER_MONEY`, `CHARACTERS_PER_REALM`, `SKIP_CINEMATICS`
+- **Rates:** `RATE_XP_KILL`, `RATE_XP_QUEST`, `RATE_XP_EXPLORE`, `RATE_DROP_MONEY`, `RATE_REPUTATION_GAIN`, `RATE_HONOR`
+- **Performance:** `NETWORK_THREADS`, `THREAD_POOL`, `BUILD_THREADS`
+- **Auth/Sicherheit:** `STRICT_VERSION_CHECK`, `WRONG_PASS_MAX_COUNT`, `WRONG_PASS_BAN_TIME`, `ALLOW_IP_LOGGING`
+- **Betrieb:** `AUTO_UPDATE`, `FORCE_REBUILD`, `ACORE_MODULES`, `CLIENT_DATA_AUTO_DOWNLOAD`, `FORCE_CLIENT_DATA_REFRESH`
+- **Datenbank:** `ACORE_DB_PASSWORD`, `MYSQL_PORT`, `MYSQL_REMOTE_ACCESS`
+
+Die vollständige Referenz steht in [docs/CONFIGURATION.de.md](docs/CONFIGURATION.de.md).
 
 ## Module / Plugins
 
-Beispiel für `ACORE_MODULES`:
+AzerothCore-Erweiterungen werden als **Module** eingebunden. Beispiel für `ACORE_MODULES`:
 
 ```text
 https://github.com/azerothcore/mod-transmog.git https://github.com/azerothcore/mod-autobalance.git
 ```
 
-Beim nächsten Start werden neue Module geklont und der Core neu gebaut. Wenn ein Modul unter `env/dist/etc/modules/` eine `*.conf.dist` erzeugt, wird standardmäßig automatisch die passende `*.conf` angelegt, sofern sie noch nicht existiert. Bestehende Modul-Konfigurationen werden nicht überschrieben.
+Neue Module werden beim Start geklont und lösen einen Rebuild aus. Wenn ein Modul eine `*.conf.dist` unter `env/dist/etc/modules/` erzeugt, kann das AIO automatisch die zugehörige `*.conf` anlegen. Bestehende Konfigurationen werden nicht überschrieben.
 
-## Privates GHCR-Package
+Beim Entfernen eines Moduls reicht das Löschen der URL aus `ACORE_MODULES` absichtlich nicht: Entferne den Modulordner manuell, setze einmal `FORCE_REBUILD=1` und danach wieder `0`. Modul-spezifische SQL-Deinstallationsschritte müssen nach der jeweiligen Modul-Dokumentation durchgeführt werden.
 
-Du kannst das Container-Package privat lassen. Hinterlege dafür auf dem Wings-Node Registry-Credentials für `ghcr.io`. Siehe [docs/PRIVATE-GHCR.de.md](docs/PRIVATE-GHCR.de.md).
+## Accounts erstellen
 
-## Accounts
-
-Nach erfolgreichem Worldserver-Start in der Pelican-Konsole:
+Sobald der Worldserver läuft, kannst du in der Pelican-Konsole zum Beispiel einen Account anlegen:
 
 ```text
 account create USERNAME PASSWORT
 account set gmlevel USERNAME 3 -1
 ```
 
-## Dateien und Persistenz
+## Persistente Dateien
 
 ```text
 /home/container/
-├── azerothcore/   # Source, Build, Configs, Client-Daten
-├── mysql/         # komplette lokale MySQL-Daten
+├── azerothcore/   # Source, Build, Configs und Client-Daten
+├── mysql/         # lokale MySQL-Daten
 ├── logs/          # MySQL-Logs
 ├── .secrets/      # automatisch erzeugtes internes DB-Passwort
 └── start.sh
 ```
 
-Für Backups den Server stoppen und mindestens `mysql/`, `.secrets/`, `azerothcore/env/dist/etc/` sowie eigene Module/Quellcodeänderungen sichern.
+Für dateibasierte Backups den Server vorher stoppen. Mindestens `mysql/`, `.secrets/`, `azerothcore/env/dist/etc/` sowie eigene Module bzw. Quellcodeänderungen sichern.
 
-## Lokale Entwicklung
+## Updates
 
-Egg mit eigener Image-URL generieren:
+Mit `AUTO_UPDATE=1` versucht das AIO beim Start Fast-Forward-Updates für AzerothCore und konfigurierte Git-Module. Lokale Änderungen werden dabei nicht automatisch überschrieben.
+
+Wenn du eine neue Version des Runtime-Images verwenden möchtest, starte den Server nach dem Image-Update neu. Bei größeren Änderungen empfiehlt sich vorher ein Backup.
+
+## Für Forks und eigene Builds
+
+Du kannst dieses Repository forken und dein eigenes Image veröffentlichen. Der enthaltene Workflow erzeugt automatisch einen lowercase GHCR-Namen nach diesem Schema:
+
+```text
+ghcr.io/<github-owner>/azerothcore-pelican-aio:latest
+```
+
+Nach einem Workflow-Lauf findest du unter **Actions → Build & publish Pelican Yolk → Artifacts** ein `pelican-azerothcore-aio-egg`, das bereits auf das Image deines Forks zeigt.
+
+Wichtig: Ein neu veröffentlichtes GHCR-Container-Package ist zunächst typischerweise privat. Wenn andere Nutzer es ohne Registry-Credentials verwenden sollen, stelle das Package in den GitHub-Package-Einstellungen einmalig auf **Public**. Eine Anleitung liegt unter [docs/PUBLIC-GHCR.de.md](docs/PUBLIC-GHCR.de.md). Für absichtlich private Images siehe [docs/PRIVATE-GHCR.de.md](docs/PRIVATE-GHCR.de.md).
+
+Eigenes Egg lokal erzeugen:
 
 ```bash
 python3 scripts/generate_egg.py \
   --image ghcr.io/deinuser/azerothcore-pelican-aio:latest
 ```
 
-Validieren:
+Repository prüfen:
 
 ```bash
 make validate
 ```
 
-Optionales Compose-Beispiel: [examples/compose.example.yml](examples/compose.example.yml).
+## Repository-Struktur
 
-## Hinweise
+```text
+.github/workflows/        GitHub Actions
+docs/                     Konfigurations- und GHCR-Dokumentation
+examples/                 optionale Beispiele
+scripts/                  Egg-Generator und Validierung
+Dockerfile                Pelican-kompatibles Runtime-Image
+entrypoint.sh             Container-Entrypoint
+start.sh                  AIO-Orchestrierung
+egg-azerothcore-aio.json  direkt importierbares Egg
+```
 
-AzerothCore unterstützt aktuelle Config-Overrides per `AC_*`-Umgebungsvariablen. Diese haben Vorrang vor den `.conf`-Dateien. Werte, die dieses Egg nicht als Variable anbietet, kannst du weiterhin direkt in `azerothcore/env/dist/etc/worldserver.conf`, `authserver.conf` oder Modul-Configs ändern.
+## Sicherheit
 
-Dieses Projekt ist eine Community-Vorlage und nicht Teil von AzerothCore oder Pelican.
+- MySQL ist standardmäßig nur intern gebunden (`MYSQL_REMOTE_ACCESS=0`).
+- Nutze nach Möglichkeit `ACORE_DB_PASSWORD=auto`.
+- Prüfe Drittanbieter-Module vor der Installation; sie werden in den Server kompiliert und laufen mit dessen Rechten.
+- Committe keine Tokens, Datenbank-Dumps oder `.secrets/`-Inhalte.
+- Ein öffentliches GHCR-Image benötigt zum **Pullen** keine GitHub-Credentials; private Images schon.
+
+Weitere Hinweise: [SECURITY.md](SECURITY.md).
+
+## Mitwirken
+
+Issues und Pull Requests sind willkommen. Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Lizenz und Hinweise
+
+Der Code dieser Vorlage steht unter der in [LICENSE](LICENSE) angegebenen Lizenz. AzerothCore, Pelican, World of Warcraft und zugehörige Marken/Projekte sind eigenständige Projekte bzw. Rechteinhaber.
+
+Dieses Repository ist eine **Community-Vorlage** und nicht offiziell mit AzerothCore, Pelican oder Blizzard Entertainment verbunden. Es werden keine Blizzard-Clientdateien in diesem Repository ausgeliefert. Nutzer sind selbst dafür verantwortlich, die für ihren Einsatz geltenden Lizenzen und rechtlichen Vorgaben einzuhalten.
