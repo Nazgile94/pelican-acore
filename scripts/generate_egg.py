@@ -63,7 +63,7 @@ echo "AzerothCore AIO installer finished."
         var("Realm Address", "Oeffentliche IP oder DNS fuer WoW-Clients. 'auto' nutzt Pelicans SERVER_IP.", "REALM_ADDRESS", "auto", "required|string|max:253", 2),
         var("Local Realm Address", "LAN/interne Realm-Adresse; meist 127.0.0.1.", "REALM_LOCAL_ADDRESS", "127.0.0.1", "required|string|max:253", 3),
         var("Local Subnet Mask", "Subnetzmaske fuer lokale Clients/realmlist.", "REALM_LOCAL_SUBNET_MASK", "255.255.255.0", "required|string|max:32", 4),
-        var("Worldserver Port Override", "Leer/0 = Primary Allocation (SERVER_PORT). Bei anderem Wert muss der Port als Pelican-Allocation existieren.", "WORLD_PORT", "", "nullable|integer|between:1,65535", 5),
+        var("Worldserver Port Override", "Primary Allocation (SERVER_PORT). Bei anderem Wert muss der Port als Pelican-Allocation existieren.", "WORLD_PORT", "8085", "nullable|integer|between:1,65535", 5),
         var("Authserver Port", "Authserver TCP-Port. Standard und empfohlen fuer WoW 3.3.5a: 3724. Als Allocation bereitstellen.", "AUTH_PORT", "3724", "required|integer|between:1,65535", 6),
         var("Realm Type", "Realmtyp: 0/4 Normal, 1 PvP, 6 RP, 8 RP-PvP, 16 FFA-PvP.", "REALM_TYPE", "0", "required|integer|in:0,1,4,6,8,16", 7),
         var("Realm Zone", "Realm-Region/Zeichensatz. 1=Development, 8=English, 9=German, 10=French, 11=Spanish, 12=Russian.", "REALM_ZONE", "1", "required|integer|min:1|max:59", 8),
@@ -89,7 +89,7 @@ echo "AzerothCore AIO installer finished."
 
         var("Network Threads", "AzerothCore Network.Threads. Standard 1; laut Upstream etwa 1 Thread je 1000 Verbindungen.", "NETWORK_THREADS", "1", "required|integer|between:1,64", 60),
         var("Global Thread Pool", "AzerothCore ThreadPool. Standard 2.", "THREAD_POOL", "2", "required|integer|between:1,64", 61),
-        var("Map Update Threads", "MapUpdate.Threads. Normal 1; bei PlayerBots werden bei leerem Wert automatisch 4 genutzt.", "MAP_UPDATE_THREADS", "", "nullable|integer|between:1,64", 62),
+        var("Map Update Threads", "MapUpdate.Threads. Normal 1; bei PlayerBots werden 4 genutzt.", "MAP_UPDATE_THREADS", "1", "nullable|integer|between:1,64", 62),
         var("Strict Client Version Check", "1 prueft Client-Dateien strenger; fuer normale 3.3.5a-Setups meist 0.", "STRICT_VERSION_CHECK", "0", "required|boolean", 63),
         var("Wrong Password Max Count", "Fehlversuche vor Temp-Ban; 0 deaktiviert diese Funktion.", "WRONG_PASS_MAX_COUNT", "0", "required|integer|min:0|max:1000", 64),
         var("Wrong Password Ban Time", "Ban-Dauer in Sekunden; 0 = permanent (nur relevant wenn Max Count > 0).", "WRONG_PASS_BAN_TIME", "600", "required|integer|min:0", 65),
