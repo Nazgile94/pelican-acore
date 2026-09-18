@@ -12,6 +12,10 @@ ghcr.io/nazgile94/azerothcore-pelican-aio:latest
 
 > Das Repository enthält weder den AzerothCore-Quellcode noch WoW-Clientdateien. AzerothCore wird beim ersten Start aus dem offiziellen Upstream-Repository geklont. Benötigte Server-Client-Daten werden über AzerothCores `acore.sh client-data` bezogen.
 
+
+> [!NOTE]
+> **KI-Transparenz:** Dieses Projekt wurde zu großen Teilen mit Unterstützung von **OpenAI ChatGPT** erstellt und iterativ weiterentwickelt. Umgangssprachlich lässt sich das als „Vibe Coding“ bezeichnen; präziser ist **KI-unterstützte Entwicklung**. Anforderungen, Tests und Entscheidungen wurden menschlich gesteuert, während KI bei Code, Dokumentation und Fehlersuche unterstützt hat. Details: [AI-NOTICE.md](AI-NOTICE.md).
+
 ## Funktionen
 
 - importierbares Pelican-`PTDL_v2`-Egg
@@ -186,6 +190,7 @@ Dockerfile                Pelican-kompatibles Runtime-Image
 entrypoint.sh             Container-Entrypoint
 start.sh                  AIO-Orchestrierung
 egg-azerothcore-aio.json  direkt importierbares Egg
+AI-NOTICE.md              KI-/AI-Transparenzhinweis
 ```
 
 ## Sicherheit
@@ -197,6 +202,12 @@ egg-azerothcore-aio.json  direkt importierbares Egg
 - Ein öffentliches GHCR-Image benötigt zum **Pullen** keine GitHub-Credentials; private Images schon.
 
 Weitere Hinweise: [SECURITY.md](SECURITY.md).
+
+## KI-Transparenz
+
+Dieses Repository ist ausdrücklich ein **KI-unterstützt entwickeltes Community-Projekt**. Große Teile von Code, Egg, Workflows und Dokumentation wurden mit OpenAI ChatGPT erstellt oder überarbeitet. Der umgangssprachliche Begriff „Vibe Coding“ passt teilweise; wir verwenden im Projekt bevorzugt **AI-assisted development / KI-unterstützte Entwicklung**, weil menschliche Anforderungen, Tests und Entscheidungen Teil des Entwicklungsprozesses sind.
+
+Der vollständige Hinweis steht in [AI-NOTICE.md](AI-NOTICE.md).
 
 ## Mitwirken
 
