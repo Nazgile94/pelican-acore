@@ -213,6 +213,17 @@ Der vollständige Hinweis steht in [AI-NOTICE.md](AI-NOTICE.md).
 
 Issues und Pull Requests sind willkommen. Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Standalone AIO Egg
+
+Zusätzlich zur empfohlenen Variante mit eigenem Docker-Yolk gibt es eine **Standalone AIO Edition**.
+
+Diese Variante benötigt **kein eigenes GitHub-Repository, kein eigenes Dockerfile und kein eigenes GHCR-Image**.
+
+Der Benutzer benötigt nur eine einzige Datei:
+
+```text
+egg-azerothcore-standalone-aio.json
+
 ## Lizenz und Hinweise
 
 Der Code dieser Vorlage steht unter der in [LICENSE](LICENSE) angegebenen Lizenz. AzerothCore, Pelican, World of Warcraft und zugehörige Marken/Projekte sind eigenständige Projekte bzw. Rechteinhaber.
