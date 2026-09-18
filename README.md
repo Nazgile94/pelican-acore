@@ -223,6 +223,36 @@ Der Benutzer benötigt nur eine einzige Datei:
 
 ```text
 egg-azerothcore-standalone-aio.json
+```
+## AIO vs. Standalone
+
+| Punkt | AIO / Custom Yolk | Standalone AIO |
+|---|---|---|
+| Einrichtung für Endnutzer | Einfach | Sehr einfach |
+| Benötigt eigenes Docker-/GHCR-Image | Ja | Nein |
+| Benötigt nur eine Egg-Datei | Nein | Ja |
+| Installationsdauer | Kürzer | Länger |
+| Build-Tools bereits vorhanden | Ja | Werden während der Installation eingerichtet |
+| MySQL | Bereits im Image enthalten | Wird lokal im Serververzeichnis bereitgestellt |
+| Reproduzierbarkeit | Sehr hoch | Gut |
+| Abhängigkeit von externer Infrastruktur | Eigenes GHCR/Image notwendig | Nur öffentliche Upstream-Quellen |
+| Updates des Runtime-Umfelds | Über neues Docker-Image | Über Egg-/Installer-Logik |
+| Core-/Modul-Updates | Automatisch möglich | Automatisch möglich |
+| PlayerBots-Unterstützung | Ja | Ja |
+| Zusätzliche Module + Branches | Ja | Ja |
+| Ressourcenbedarf bei Erstinstallation | Niedriger | Höher |
+| Fehlersuche | Meist einfacher | Etwas komplexer |
+| Für produktiven Dauerbetrieb | **Empfohlen** | Geeignet, aktuell eher Beta |
+| Für Nutzer ohne Docker/GHCR-Kenntnisse | Gut | **Sehr gut geeignet** |
+
+### Vorteile und Nachteile
+
+| Variante | Vorteile | Nachteile |
+|---|---|---|
+| **AIO / Custom Yolk** | Kontrollierte und reproduzierbare Umgebung, schnellere Installation, weniger Abhängigkeiten zur Laufzeit, einfacher zu testen und zu warten | Eigenes Docker-Image bzw. GHCR-Package muss bereitgestellt und gepflegt werden |
+| **Standalone AIO** | Nur eine Egg-Datei nötig, kein eigenes Image oder GHCR erforderlich, sehr niedrige Einstiegshürde | Längere Erstinstallation, höherer Ressourcenbedarf beim Setup, stärker abhängig von Installer- und Upstream-Kompatibilität |
+
+> **Empfehlung:** Für dauerhaft betriebene Server und möglichst vorhersehbare Updates ist die AIO-/Custom-Yolk-Variante vorzuziehen. Die Standalone-Version eignet sich besonders für Nutzer, die möglichst wenig zusätzliche Infrastruktur verwalten möchten.
 
 ## Lizenz und Hinweise
 
