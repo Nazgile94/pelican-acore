@@ -349,7 +349,7 @@ fi
 
 say "Fuehre Datenbank-Import/Migrationen aus ..."
 cd "$SRC/env/dist/bin"
-"$DBIMPORT_BIN"
+"$DBIMPORT_BIN" -c "$ETC/dbimport.conf"
 
 if [[ "$USE_PLAYERBOTS" == "1" ]]; then
     [[ -d "$SRC/modules/mod-playerbots" ]] || die "PlayerBots-Modul fehlt trotz USE_PLAYERBOTS=1."
@@ -380,7 +380,7 @@ realm_row="$("$MYSQL_BIN" --protocol=socket --socket="$MYSQL_SOCKET" -uroot -Nse
 say "Realm-Datensatz: ${realm_row}"
 
 say "Starte Authserver auf Port ${AUTH_PORT} ..."
-"$AUTH_BIN" &
+"$AUTH_BIN" -c "$ETC/authserver.conf" &
 AUTH_PID=$!
 sleep 2
 if ! kill -0 "$AUTH_PID" >/dev/null 2>&1; then
@@ -390,4 +390,4 @@ fi
 say "Starte Worldserver auf Port ${WORLD_PORT}. Pelican-Konsole ist jetzt die Worldserver-Konsole."
 say "Account anlegen: account create <user> <pass>"
 say "Admin setzen:    account set gmlevel <user> 3 -1"
-exec "$WORLD_BIN"
+exec "$WORLD_BIN" -c "$ETC/worldserver.conf"
