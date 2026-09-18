@@ -24,7 +24,7 @@ def var(name, desc, env, default, rules, sort, view=True, edit=True):
 
 def main():
     ap = argparse.ArgumentParser(description="Generate the Pelican PTDL_v2 egg and embed start.sh.")
-    ap.add_argument("--image", default="ghcr.io/replace-me/azerothcore-pelican-aio:latest")
+    ap.add_argument("--image", default="ghcr.io/nazgile94/azerothcore-pelican-aio:latest")
     ap.add_argument("--output", default=str(ROOT / "egg-azerothcore-aio.json"))
     args = ap.parse_args()
 
@@ -41,7 +41,7 @@ mkdir -p logs mysql .secrets
 chmod 700 .secrets || true
 
 cat > AIO-INFO.txt <<'INFO'
-AzerothCore Pelican All-in-One v2
+AzerothCore Pelican All-in-One v2.2
 ================================
 Persistent data under /home/container:
 - azerothcore/  source, build, configs and client data
@@ -89,20 +89,24 @@ echo "AzerothCore AIO installer finished."
 
         var("Network Threads", "AzerothCore Network.Threads. Standard 1; laut Upstream etwa 1 Thread je 1000 Verbindungen.", "NETWORK_THREADS", "1", "required|integer|between:1,64", 60),
         var("Global Thread Pool", "AzerothCore ThreadPool. Standard 2.", "THREAD_POOL", "2", "required|integer|between:1,64", 61),
-        var("Strict Client Version Check", "1 prueft Client-Dateien strenger; fuer normale 3.3.5a-Setups meist 0.", "STRICT_VERSION_CHECK", "0", "required|boolean", 62),
-        var("Wrong Password Max Count", "Fehlversuche vor Temp-Ban; 0 deaktiviert diese Funktion.", "WRONG_PASS_MAX_COUNT", "0", "required|integer|min:0|max:1000", 63),
-        var("Wrong Password Ban Time", "Ban-Dauer in Sekunden; 0 = permanent (nur relevant wenn Max Count > 0).", "WRONG_PASS_BAN_TIME", "600", "required|integer|min:0", 64),
-        var("Wrong Password Ban Type", "0 = IP bannen, 1 = Account bannen.", "WRONG_PASS_BAN_TYPE", "0", "required|integer|between:0,1", 65),
-        var("Log IP Addresses in Database", "1 erlaubt IP-Logging in der Datenbank, 0 deaktiviert es.", "ALLOW_IP_LOGGING", "1", "required|boolean", 66),
+        var("Map Update Threads", "MapUpdate.Threads. Normal 1; bei PlayerBots werden bei leerem Wert automatisch 4 genutzt.", "MAP_UPDATE_THREADS", "", "nullable|integer|between:1,64", 62),
+        var("Strict Client Version Check", "1 prueft Client-Dateien strenger; fuer normale 3.3.5a-Setups meist 0.", "STRICT_VERSION_CHECK", "0", "required|boolean", 63),
+        var("Wrong Password Max Count", "Fehlversuche vor Temp-Ban; 0 deaktiviert diese Funktion.", "WRONG_PASS_MAX_COUNT", "0", "required|integer|min:0|max:1000", 64),
+        var("Wrong Password Ban Time", "Ban-Dauer in Sekunden; 0 = permanent (nur relevant wenn Max Count > 0).", "WRONG_PASS_BAN_TIME", "600", "required|integer|min:0", 65),
+        var("Wrong Password Ban Type", "0 = IP bannen, 1 = Account bannen.", "WRONG_PASS_BAN_TYPE", "0", "required|integer|between:0,1", 66),
+        var("Log IP Addresses in Database", "1 erlaubt IP-Logging in der Datenbank, 0 deaktiviert es.", "ALLOW_IP_LOGGING", "1", "required|boolean", 67),
 
         var("AzerothCore DB Password", "'auto' erzeugt beim ersten Start ein persistentes zufaelliges internes Passwort. Optional explizit setzen.", "ACORE_DB_PASSWORD", "auto", "required|string|min:4|max:128", 80),
         var("MySQL Port", "Interner MySQL-Port. Nur extern benoetigt, wenn MYSQL_REMOTE_ACCESS=1.", "MYSQL_PORT", "3306", "required|integer|between:1,65535", 81),
         var("MySQL Remote Access", "0 = nur 127.0.0.1; 1 = 0.0.0.0. Bei 1 Port als Allocation + Firewall absichern.", "MYSQL_REMOTE_ACCESS", "0", "required|boolean", 82),
 
+        var("Use PlayerBots", "0 = normaler AzerothCore-Core. 1 = verwendet automatisch mod-playerbots/azerothcore-wotlk Branch Playerbot und installiert mod-playerbots. Vor dem ersten Start waehlen.", "USE_PLAYERBOTS", "0", "required|boolean", 90),
+        var("PlayerBots Module Branch", "Branch fuer mod-playerbots. Standard: master. Fuer Tests kann z.B. test-staging verwendet werden.", "PLAYERBOTS_MODULE_BRANCH", "master", "required|string|max:128", 91),
+
         var("Build Threads", "Parallele Compiler-Threads fuer AzerothCore.", "BUILD_THREADS", "2", "required|integer|between:1,64", 100),
         var("Auto Update", "1 = Core/Module beim Start per Fast-Forward aktualisieren. Lokale Aenderungen werden nicht ueberschrieben.", "AUTO_UPDATE", "1", "required|boolean", 101),
         var("Force Rebuild", "1 erzwingt bei jedem Start einen vollen Build. Nach Verwendung wieder auf 0 setzen.", "FORCE_REBUILD", "0", "required|boolean", 102),
-        var("AzerothCore Modules", "Leerzeichen-getrennte HTTPS-Git-URLs zu Modulen. Neue/aktualisierte Module loesen einen Rebuild aus.", "ACORE_MODULES", "", "nullable|string|max:8192", 103),
+        var("AzerothCore Modules", "Module als HTTPS-Git-URLs. Optional direkt dahinter --branch=BRANCH oder --branch BRANCH. Beispiel: https://github.com/mod-playerbots/mod-playerbots.git --branch=master", "ACORE_MODULES", "", "nullable|string|max:8192", 103),
         var("Auto-create Module Configs", "1 kopiert neue *.conf.dist aus etc/modules automatisch nach *.conf, ohne bestehende Configs zu ueberschreiben.", "MODULE_CONFIG_AUTO_COPY", "1", "required|boolean", 104),
         var("Auto-download Client Data", "1 laedt fehlende DBC/Maps/VMaps/MMaps automatisch. 0 erwartet manuell bereitgestellte Daten.", "CLIENT_DATA_AUTO_DOWNLOAD", "1", "required|boolean", 105),
         var("Force Client Data Refresh", "1 fuehrt client-data bei jedem Start erneut aus. Danach normalerweise wieder auf 0 setzen.", "FORCE_CLIENT_DATA_REFRESH", "0", "required|boolean", 106),
@@ -114,10 +118,10 @@ echo "AzerothCore AIO installer finished."
         "_comment": "DO NOT EDIT: FILE GENERATED BY scripts/generate_egg.py",
         "meta": {"version": "PTDL_v2", "update_url": None},
         "exported_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "name": "AzerothCore WotLK - All in One v2",
-        "author": "pelican-azerothcore-aio@local.invalid",
+        "name": "AzerothCore WotLK - All in One v2.2",
+        "author": "Nazgile94",
         "uuid": "b2b1b3e4-f2f7-4b61-a7f4-b122913fbd23",
-        "description": "AzerothCore WotLK All-in-One fuer Pelican: MySQL 8.4, dbimport, Authserver, Worldserver, Client-Daten, Module und Build-Automation in einem Server. World-Port kann die Primary Allocation nutzen oder per WORLD_PORT ueberschrieben werden.",
+        "description": "AzerothCore WotLK All-in-One fuer Pelican: MySQL 8.4, dbimport, Authserver, Worldserver, Client-Daten, Module mit Branch-Support sowie optionaler PlayerBots-Modus in einem Server.",
         "tags": ["wow", "azerothcore", "wotlk", "all-in-one"],
         "features": None,
         "docker_images": {"AzerothCore AIO Yolk": args.image},

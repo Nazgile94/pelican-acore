@@ -20,6 +20,18 @@ MODULE_CONFIG_AUTO_COPY="${MODULE_CONFIG_AUTO_COPY:-1}"
 CLIENT_DATA_AUTO_DOWNLOAD="${CLIENT_DATA_AUTO_DOWNLOAD:-1}"
 FORCE_CLIENT_DATA_REFRESH="${FORCE_CLIENT_DATA_REFRESH:-0}"
 
+# Optional PlayerBots mode.
+# 0 = normal upstream AzerothCore
+# 1 = mod-playerbots AzerothCore fork (Playerbot branch) + mod-playerbots module
+USE_PLAYERBOTS="${USE_PLAYERBOTS:-0}"
+PLAYERBOTS_CORE_REPO="${PLAYERBOTS_CORE_REPO:-https://github.com/mod-playerbots/azerothcore-wotlk.git}"
+PLAYERBOTS_CORE_BRANCH="${PLAYERBOTS_CORE_BRANCH:-Playerbot}"
+PLAYERBOTS_MODULE_REPO="${PLAYERBOTS_MODULE_REPO:-https://github.com/mod-playerbots/mod-playerbots.git}"
+PLAYERBOTS_MODULE_BRANCH="${PLAYERBOTS_MODULE_BRANCH:-master}"
+PLAYERBOTS_DB_WORKER_THREADS="${PLAYERBOTS_DB_WORKER_THREADS:-1}"
+PLAYERBOTS_DB_SYNCH_THREADS="${PLAYERBOTS_DB_SYNCH_THREADS:-1}"
+PLAYERBOTS_DB_UPDATES="${PLAYERBOTS_DB_UPDATES:-1}"
+
 # Database
 ACORE_DB_PASSWORD="${ACORE_DB_PASSWORD:-auto}"
 MYSQL_PORT="${MYSQL_PORT:-3306}"
@@ -55,6 +67,7 @@ RATE_REPUTATION_GAIN="${RATE_REPUTATION_GAIN:-1}"
 RATE_HONOR="${RATE_HONOR:-1}"
 NETWORK_THREADS="${NETWORK_THREADS:-1}"
 THREAD_POOL="${THREAD_POOL:-2}"
+MAP_UPDATE_THREADS="${MAP_UPDATE_THREADS:-}"
 
 # Auth / privacy
 STRICT_VERSION_CHECK="${STRICT_VERSION_CHECK:-0}"
@@ -71,13 +84,40 @@ is_port() { is_uint "$1" && (( 10#$1 >= 1 && 10#$1 <= 65535 )); }
 is_bool() { [[ "$1" == "0" || "$1" == "1" ]]; }
 is_nonneg_number() { [[ "$1" =~ ^([0-9]+([.][0-9]+)?|[.][0-9]+)$ ]]; }
 
+normalize_git_url() {
+    local url="$1"
+    url="${url%/}"
+    url="${url%.git}"
+    printf '%s' "$url"
+}
+
+# PlayerBots mode selects the required fork and ensures the module is present.
+if [[ "$USE_PLAYERBOTS" == "1" ]]; then
+    ACORE_REPO="$PLAYERBOTS_CORE_REPO"
+    ACORE_BRANCH="$PLAYERBOTS_CORE_BRANCH"
+
+    if [[ "$ACORE_MODULES" != *"$PLAYERBOTS_MODULE_REPO"* ]]; then
+        ACORE_MODULES="${ACORE_MODULES:+${ACORE_MODULES} }${PLAYERBOTS_MODULE_REPO} --branch=${PLAYERBOTS_MODULE_BRANCH}"
+    fi
+
+    # PlayerBots needs enUS server-side DBC data.
+    DBC_LOCALE="0"
+
+    # Recommended starting point for PlayerBots.
+    if [[ -z "$MAP_UPDATE_THREADS" ]]; then
+        MAP_UPDATE_THREADS="4"
+    fi
+elif [[ -z "$MAP_UPDATE_THREADS" ]]; then
+    MAP_UPDATE_THREADS="1"
+fi
+
 # WORLD_PORT leer/0 => Primary Allocation von Pelican.
 if [[ -z "$WORLD_PORT" || "$WORLD_PORT" == "0" ]]; then
     WORLD_PORT="${SERVER_PORT:-8085}"
 fi
 
 is_uint "$BUILD_THREADS" && (( BUILD_THREADS >= 1 && BUILD_THREADS <= 64 )) || die "BUILD_THREADS muss zwischen 1 und 64 liegen."
-for b in AUTO_UPDATE FORCE_REBUILD MODULE_CONFIG_AUTO_COPY CLIENT_DATA_AUTO_DOWNLOAD FORCE_CLIENT_DATA_REFRESH MYSQL_REMOTE_ACCESS ALLOW_TWO_SIDE_ACCOUNTS STRICT_VERSION_CHECK ALLOW_IP_LOGGING; do
+for b in AUTO_UPDATE FORCE_REBUILD MODULE_CONFIG_AUTO_COPY CLIENT_DATA_AUTO_DOWNLOAD FORCE_CLIENT_DATA_REFRESH MYSQL_REMOTE_ACCESS ALLOW_TWO_SIDE_ACCOUNTS STRICT_VERSION_CHECK ALLOW_IP_LOGGING USE_PLAYERBOTS PLAYERBOTS_DB_UPDATES; do
     is_bool "${!b}" || die "$b muss 0 oder 1 sein."
 done
 for p in MYSQL_PORT AUTH_PORT WORLD_PORT; do
@@ -105,6 +145,11 @@ for r in RATE_XP_KILL RATE_XP_QUEST RATE_XP_EXPLORE RATE_DROP_MONEY RATE_REPUTAT
 done
 is_uint "$NETWORK_THREADS" && (( NETWORK_THREADS >= 1 && NETWORK_THREADS <= 64 )) || die "NETWORK_THREADS muss 1-64 sein."
 is_uint "$THREAD_POOL" && (( THREAD_POOL >= 1 && THREAD_POOL <= 64 )) || die "THREAD_POOL muss 1-64 sein."
+is_uint "$MAP_UPDATE_THREADS" && (( MAP_UPDATE_THREADS >= 1 && MAP_UPDATE_THREADS <= 64 )) || die "MAP_UPDATE_THREADS muss 1-64 sein."
+is_uint "$PLAYERBOTS_DB_WORKER_THREADS" && (( PLAYERBOTS_DB_WORKER_THREADS >= 1 && PLAYERBOTS_DB_WORKER_THREADS <= 64 )) || die "PLAYERBOTS_DB_WORKER_THREADS muss 1-64 sein."
+is_uint "$PLAYERBOTS_DB_SYNCH_THREADS" && (( PLAYERBOTS_DB_SYNCH_THREADS >= 1 && PLAYERBOTS_DB_SYNCH_THREADS <= 64 )) || die "PLAYERBOTS_DB_SYNCH_THREADS muss 1-64 sein."
+[[ "$PLAYERBOTS_CORE_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || die "PLAYERBOTS_CORE_BRANCH enthaelt ungueltige Zeichen."
+[[ "$PLAYERBOTS_MODULE_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || die "PLAYERBOTS_MODULE_BRANCH enthaelt ungueltige Zeichen."
 is_uint "$WRONG_PASS_MAX_COUNT" || die "WRONG_PASS_MAX_COUNT muss eine Ganzzahl >= 0 sein."
 is_uint "$WRONG_PASS_BAN_TIME" || die "WRONG_PASS_BAN_TIME muss eine Ganzzahl >= 0 sein."
 is_uint "$WRONG_PASS_BAN_TYPE" && (( WRONG_PASS_BAN_TYPE <= 1 )) || die "WRONG_PASS_BAN_TYPE muss 0 oder 1 sein."
@@ -139,17 +184,27 @@ sql_escape() {
 }
 
 if [[ ! -d "$SRC/.git" ]]; then
+    if [[ "$USE_PLAYERBOTS" == "1" ]]; then
+        say "PlayerBots-Modus aktiviert: Core ${ACORE_REPO} (${ACORE_BRANCH}), Modul ${PLAYERBOTS_MODULE_REPO} (${PLAYERBOTS_MODULE_BRANCH})."
+    fi
     say "Klone AzerothCore (${ACORE_BRANCH}) ..."
-    git clone --depth 1 --branch "$ACORE_BRANCH" "$ACORE_REPO" "$SRC"
+    git clone --depth 1 --single-branch --branch "$ACORE_BRANCH" "$ACORE_REPO" "$SRC"
 fi
 
 cd "$SRC"
 needs_build=0
 needs_full_build=0
 
+# Do not silently switch an already-installed server between upstream and PlayerBots.
+current_origin="$(git remote get-url origin 2>/dev/null || true)"
+current_branch="$(git branch --show-current 2>/dev/null || true)"
+if [[ "$(normalize_git_url "$current_origin")" != "$(normalize_git_url "$ACORE_REPO")" || "$current_branch" != "$ACORE_BRANCH" ]]; then
+    die "Der vorhandene Core nutzt '${current_origin}' / Branch '${current_branch}', angefordert ist '${ACORE_REPO}' / '${ACORE_BRANCH}'. Fuer einen Wechsel zwischen normalem AzerothCore und PlayerBots bitte zuerst Datenbanken sichern und den Core sauber migrieren oder den Server neu installieren. Automatisches Umschalten wird absichtlich verhindert."
+fi
+
 if [[ "$AUTO_UPDATE" == "1" ]]; then
     if git diff --quiet && git diff --cached --quiet; then
-        say "Pruefe AzerothCore auf Updates ..."
+        say "Pruefe AzerothCore auf Updates (${ACORE_BRANCH}) ..."
         old_core="$(git rev-parse HEAD)"
         if git pull --ff-only origin "$ACORE_BRANCH"; then
             new_core="$(git rev-parse HEAD)"
@@ -165,35 +220,118 @@ if [[ "$AUTO_UPDATE" == "1" ]]; then
     fi
 fi
 
+install_or_update_module() {
+    local url="$1"
+    local branch="${2:-}"
+    local name dest current_origin_mod current_branch_mod old_mod new_mod
+
+    [[ "$url" =~ ^https://[^[:space:]]+$ ]] || die "Module muessen als HTTPS-Git-URLs angegeben werden: $url"
+    [[ -z "$branch" || "$branch" =~ ^[A-Za-z0-9._/-]+$ ]] || die "Ungueltiger Git-Branch fuer Modul '$url': $branch"
+
+    name="$(basename "$url")"
+    name="${name%.git}"
+    [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || die "Ungueltiger Modulname aus URL: $url"
+    dest="modules/$name"
+
+    if [[ ! -d "$dest/.git" ]]; then
+        if [[ -n "$branch" ]]; then
+            say "Installiere Modul '$name' (Branch: $branch) ..."
+            git clone --depth 1 --single-branch --branch "$branch" "$url" "$dest"
+        else
+            say "Installiere Modul '$name' ..."
+            git clone --depth 1 "$url" "$dest"
+        fi
+        needs_build=1
+        needs_full_build=1
+        return
+    fi
+
+    current_origin_mod="$(git -C "$dest" remote get-url origin 2>/dev/null || true)"
+    if [[ "$(normalize_git_url "$current_origin_mod")" != "$(normalize_git_url "$url")" ]]; then
+        die "Modul '$name' existiert bereits, verwendet aber ein anderes Origin: '$current_origin_mod' statt '$url'."
+    fi
+
+    current_branch_mod="$(git -C "$dest" branch --show-current 2>/dev/null || true)"
+
+    if [[ -n "$branch" && "$current_branch_mod" != "$branch" ]]; then
+        if ! git -C "$dest" diff --quiet || ! git -C "$dest" diff --cached --quiet; then
+            die "Modul '$name' soll auf Branch '$branch' wechseln, hat aber lokale Aenderungen. Bitte zuerst sichern/committen oder die Aenderungen entfernen."
+        fi
+
+        say "Wechsle Modul '$name' von Branch '${current_branch_mod:-detached}' auf '$branch' ..."
+        git -C "$dest" fetch --depth 1 origin "$branch:refs/remotes/origin/$branch"
+
+        if git -C "$dest" show-ref --verify --quiet "refs/heads/$branch"; then
+            git -C "$dest" switch "$branch"
+            git -C "$dest" merge --ff-only "origin/$branch"
+        else
+            git -C "$dest" switch -c "$branch" --track "origin/$branch"
+        fi
+
+        needs_build=1
+        needs_full_build=1
+    fi
+
+    if [[ "$AUTO_UPDATE" == "1" ]]; then
+        if git -C "$dest" diff --quiet && git -C "$dest" diff --cached --quiet; then
+            old_mod="$(git -C "$dest" rev-parse HEAD)"
+            if [[ -n "$branch" ]]; then
+                if git -C "$dest" pull --ff-only origin "$branch"; then
+                    :
+                else
+                    say "Update fuer Modul '$name' Branch '$branch' uebersprungen (kein Fast-Forward moeglich)."
+                    return
+                fi
+            else
+                if git -C "$dest" pull --ff-only; then
+                    :
+                else
+                    say "Update fuer Modul '$name' uebersprungen (kein Fast-Forward moeglich)."
+                    return
+                fi
+            fi
+
+            new_mod="$(git -C "$dest" rev-parse HEAD)"
+            if [[ "$old_mod" != "$new_mod" ]]; then
+                needs_build=1
+                needs_full_build=1
+            fi
+        else
+            say "Lokale Aenderungen in Modul '$name'; Auto-Update uebersprungen."
+        fi
+    fi
+}
+
 if [[ -n "$ACORE_MODULES" ]]; then
     say "Pruefe konfigurierte Module ..."
     mkdir -p modules
-    for url in $ACORE_MODULES; do
-        [[ "$url" =~ ^https://[^[:space:]]+$ ]] || die "Module muessen als HTTPS-Git-URLs angegeben werden: $url"
-        name="$(basename "$url")"
-        name="${name%.git}"
-        [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || die "Ungueltiger Modulname aus URL: $url"
-        dest="modules/$name"
-        if [[ ! -d "$dest/.git" ]]; then
-            git clone --depth 1 "$url" "$dest"
-            needs_build=1
-            needs_full_build=1
-        elif [[ "$AUTO_UPDATE" == "1" ]]; then
-            if git -C "$dest" diff --quiet && git -C "$dest" diff --cached --quiet; then
-                old_mod="$(git -C "$dest" rev-parse HEAD)"
-                if git -C "$dest" pull --ff-only; then
-                    new_mod="$(git -C "$dest" rev-parse HEAD)"
-                    if [[ "$old_mod" != "$new_mod" ]]; then
-                        needs_build=1
-                        needs_full_build=1
-                    fi
-                else
-                    say "Update fuer Modul '$name' uebersprungen (kein Fast-Forward moeglich)."
-                fi
-            else
-                say "Lokale Aenderungen in Modul '$name'; Auto-Update uebersprungen."
-            fi
+
+    module_text="${ACORE_MODULES//$'\n'/ }"
+    read -r -a module_tokens <<< "$module_text"
+    i=0
+
+    while (( i < ${#module_tokens[@]} )); do
+        url="${module_tokens[$i]}"
+        i=$((i + 1))
+        branch=""
+
+        [[ "$url" =~ ^https://[^[:space:]]+$ ]] || die "Erwartete Modul-URL, erhalten: '$url'. Syntax: https://.../mod.git [--branch=BRANCH]"
+
+        if (( i < ${#module_tokens[@]} )); then
+            case "${module_tokens[$i]}" in
+                --branch=*)
+                    branch="${module_tokens[$i]#--branch=}"
+                    i=$((i + 1))
+                    ;;
+                --branch)
+                    (( i + 1 < ${#module_tokens[@]} )) || die "--branch benoetigt einen Branch-Namen."
+                    branch="${module_tokens[$((i + 1))]}"
+                    i=$((i + 2))
+                    ;;
+            esac
         fi
+
+        install_or_update_module "$url" "$branch"
     done
 fi
 
@@ -316,6 +454,16 @@ GRANT ALL PRIVILEGES ON \`acore_auth\`.* TO 'acore'@'127.0.0.1';
 FLUSH PRIVILEGES;
 SQL
 
+if [[ "$USE_PLAYERBOTS" == "1" ]]; then
+    say "Richte PlayerBots-Datenbank acore_playerbots ein ..."
+    mysql --protocol=socket --socket="$MYSQL_SOCKET" -uroot <<SQL
+CREATE DATABASE IF NOT EXISTS \`acore_playerbots\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON \`acore_playerbots\`.* TO 'acore'@'localhost';
+GRANT ALL PRIVILEGES ON \`acore_playerbots\`.* TO 'acore'@'127.0.0.1';
+FLUSH PRIVILEGES;
+SQL
+fi
+
 if [[ "$MYSQL_REMOTE_ACCESS" == "1" ]]; then
 mysql --protocol=socket --socket="$MYSQL_SOCKET" -uroot <<SQL
 CREATE USER IF NOT EXISTS 'acore'@'%' IDENTIFIED BY '${ACORE_DB_PASSWORD}';
@@ -323,8 +471,13 @@ ALTER USER 'acore'@'%' IDENTIFIED BY '${ACORE_DB_PASSWORD}';
 GRANT ALL PRIVILEGES ON \`acore_world\`.* TO 'acore'@'%';
 GRANT ALL PRIVILEGES ON \`acore_characters\`.* TO 'acore'@'%';
 GRANT ALL PRIVILEGES ON \`acore_auth\`.* TO 'acore'@'%';
-FLUSH PRIVILEGES;
 SQL
+if [[ "$USE_PLAYERBOTS" == "1" ]]; then
+mysql --protocol=socket --socket="$MYSQL_SOCKET" -uroot <<SQL
+GRANT ALL PRIVILEGES ON \`acore_playerbots\`.* TO 'acore'@'%';
+SQL
+fi
+mysql --protocol=socket --socket="$MYSQL_SOCKET" -uroot -e "FLUSH PRIVILEGES;"
 fi
 
 # AzerothCore config overrides. Env-Variablen haben Vorrang vor *.conf.
@@ -358,6 +511,15 @@ export AC_RATE_REPUTATION_GAIN="$RATE_REPUTATION_GAIN"
 export AC_RATE_HONOR="$RATE_HONOR"
 export AC_NETWORK_THREADS="$NETWORK_THREADS"
 export AC_THREAD_POOL="$THREAD_POOL"
+export AC_MAP_UPDATE_THREADS="$MAP_UPDATE_THREADS"
+
+if [[ "$USE_PLAYERBOTS" == "1" ]]; then
+    export AC_PLAYERBOTS_DATABASE_INFO="127.0.0.1;${MYSQL_PORT};acore;${ACORE_DB_PASSWORD};acore_playerbots"
+    export AC_PLAYERBOTS_DATABASE_WORKER_THREADS="$PLAYERBOTS_DB_WORKER_THREADS"
+    export AC_PLAYERBOTS_DATABASE_SYNCH_THREADS="$PLAYERBOTS_DB_SYNCH_THREADS"
+    export AC_PLAYERBOTS_UPDATES_ENABLE_DATABASES="$PLAYERBOTS_DB_UPDATES"
+fi
+
 # Im unprivilegierten Pelican-Container kann High Priority nicht gesetzt werden.
 export AC_PROCESS_PRIORITY=0
 export AC_STRICT_VERSION_CHECK="$STRICT_VERSION_CHECK"
@@ -369,6 +531,12 @@ export AC_ALLOW_LOGGING_IP_ADDRESSES_IN_DATABASE="$ALLOW_IP_LOGGING"
 say "Fuehre Datenbank-Import/Migrationen aus ..."
 cd "$SRC/env/dist/bin"
 ./dbimport
+
+if [[ "$USE_PLAYERBOTS" == "1" ]]; then
+    [[ -d "$SRC/modules/mod-playerbots" ]] || die "PlayerBots-Modul fehlt trotz USE_PLAYERBOTS=1."
+    [[ -f "$ETC/modules/playerbots.conf" || -f "$ETC/modules/mod_playerbots.conf" ]] || say "WARNUNG: Keine playerbots.conf gefunden. Pruefe ${ETC}/modules/ nach dem Build."
+    say "PlayerBots aktiviert. Die PlayerBots-Datenbank wird beim Worldserver-Start ueber den PlayerBots-Updater initialisiert."
+fi
 
 sql_realm_name="$(sql_escape "$REALM_NAME")"
 sql_realm_address="$(sql_escape "$REALM_ADDRESS")"
