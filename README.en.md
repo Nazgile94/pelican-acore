@@ -219,6 +219,36 @@ The user only needs a single file:
 
 ```text
 egg-azerothcore-standalone-aio.json
+```
+## AIO vs. Standalone
+
+| Topic | AIO / Custom Yolk | Standalone AIO |
+|---|---|---|
+| Setup for end users | Easy | Very easy |
+| Requires a custom Docker/GHCR image | Yes | No |
+| Only one Egg file required | No | Yes |
+| Installation time | Shorter | Longer |
+| Build tools preinstalled | Yes | Installed during setup |
+| MySQL | Included in the image | Provided locally inside the server directory |
+| Reproducibility | Very high | Good |
+| External infrastructure required | Custom GHCR/image required | Only public upstream sources |
+| Runtime environment updates | Through a new Docker image | Through Egg/installer logic |
+| Core/module updates | Supported automatically | Supported automatically |
+| PlayerBots support | Yes | Yes |
+| Additional modules + branches | Yes | Yes |
+| Resource usage during initial setup | Lower | Higher |
+| Troubleshooting | Usually easier | Slightly more complex |
+| Recommended for production use | **Recommended** | Suitable, currently better treated as Beta |
+| Best for users without Docker/GHCR knowledge | Good | **Very well suited** |
+
+### Pros and Cons
+
+| Edition | Advantages | Disadvantages |
+|---|---|---|
+| **AIO / Custom Yolk** | Controlled and reproducible runtime, faster installation, fewer runtime dependencies, easier testing and maintenance | Requires maintaining a Docker image or GHCR package |
+| **Standalone AIO** | Only one Egg file required, no custom image or GHCR needed, very low setup barrier | Longer initial installation, higher setup resource usage, more dependent on installer and upstream compatibility |
+
+> **Recommendation:** For long-running servers and the most predictable update path, the AIO / Custom Yolk edition is the preferred choice. The Standalone edition is especially useful for users who want to manage as little additional infrastructure as possible.
 
 ## Contributing
 
