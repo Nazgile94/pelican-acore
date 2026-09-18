@@ -2,7 +2,7 @@
 
 [English README](README.en.md)
 
-Ein öffentlich nutzbares **All-in-One-Egg für AzerothCore WotLK 3.3.5a auf Pelican**. Ein einzelner Pelican-Server verwaltet AzerothCore, MySQL 8.4, Datenbankmigrationen, Authserver, Worldserver, Client-Daten und optionale AzerothCore-Module.
+Ein öffentlich nutzbares **All-in-One-Egg für [Azerothcore](https://www.azerothcore.org/) WotLK 3.3.5a auf [Pelican](https://pelican.dev/)**. Ein einzelner Pelican-Server verwaltet AzerothCore, MySQL 8.4, Datenbankmigrationen, Authserver, Worldserver, Client-Daten und optionale AzerothCore-Module.
 
 **Für normale Nutzer ist kein eigener Docker-Build und kein GitHub-Fork erforderlich.** Das mitgelieferte Egg verwendet das öffentliche Runtime-Image:
 
